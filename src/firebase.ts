@@ -49,11 +49,24 @@ export class FirebaseError extends Error {
  */
 /** Keep the build-free configurator copy in public/app.js in sync. */
 const USER_ID_MAX_LENGTH = 64;
-const USER_ID_UNSAFE_RE = /[.$#\[\]\/\\%\s\u0000-\u001F\u007F\uD800-\uDFFF]/u;
+const USER_ID_UNSAFE_RE = /[$#\[\]\/\\%\s\u0000-\u001F\u007F\uD800-\uDFFF]/u;
+
+/**
+ * `.` is escaped rather than rejected (see escapeKey), but an ID that is
+ * *only* dots is still refused. Spotify does not issue `.` or `..`, so nothing
+ * is lost, and the traversal guard the denylist used to provide survives even
+ * if the escaping is ever changed.
+ */
+const USER_ID_DOTS_ONLY_RE = /^\.+$/;
 
 export function isValidUserId(value: string): boolean {
   const length = [...value].length;
-  return length > 0 && length <= USER_ID_MAX_LENGTH && !USER_ID_UNSAFE_RE.test(value);
+  return (
+    length > 0 &&
+    length <= USER_ID_MAX_LENGTH &&
+    !USER_ID_UNSAFE_RE.test(value) &&
+    !USER_ID_DOTS_ONLY_RE.test(value)
+  );
 }
 
 /**
@@ -69,7 +82,22 @@ function pathSegment(userId: string): string {
   if (!isValidUserId(userId)) {
     throw new FirebaseError('Invalid Spotify user ID');
   }
-  return encodeURIComponent(userId);
+  return encodeURIComponent(escapeKey(userId));
+}
+
+/**
+ * Realtime Database keys cannot contain `.`, but Spotify issues IDs that do -
+ * any account whose username is email-shaped, such as `first.last`. Rejecting
+ * them outright locks those accounts out of the app entirely, and the ID is not
+ * something a user can change.
+ *
+ * So escape rather than reject. `~` goes first, otherwise a literal `~2E` in an
+ * ID would collide with the encoding of `.` and two distinct users could map to
+ * one key. Traversal stops being a concern as a side effect: `..` encodes to
+ * `~2E~2E`, which cannot terminate a path segment early.
+ */
+export function escapeKey(userId: string): string {
+  return userId.replace(/~/g, '~7E').replace(/\./g, '~2E');
 }
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';

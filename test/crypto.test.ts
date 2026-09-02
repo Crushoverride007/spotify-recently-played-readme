@@ -68,7 +68,6 @@ describe('user IDs', () => {
       '',
       '/',
       'a/b',
-      'a.b',
       '%2f',
       'a%2fb',
       '#',
@@ -87,6 +86,8 @@ describe('user IDs', () => {
 
     for (const valid of [
       'ordinary_user-9',
+      // Escaped into the key, not rejected: Spotify issues these.
+      'a.b',
       'legacy+user',
       'legacy*user',
       'legacy?user',

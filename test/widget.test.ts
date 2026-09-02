@@ -236,7 +236,6 @@ describe('untrusted input', () => {
       '../etc',
       '..',
       'a/b',
-      'a.b',
       'a$b',
       'a#b',
       'a[b]',
